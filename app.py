@@ -6,8 +6,7 @@ import streamlit as st
 # --- Streamlit 페이지 설정 ---
 st.set_page_config(page_title="Crystal Shard Poster", page_icon="💎", layout="centered")
 
-st.title("💎 Crystal Shard Poster Generator")
-st.write("델로네 삼각분할을 활용한 사이버펑크 크리스탈 포스터 생성기입니다.")
+st.title("Crystal Shard Poster Generator")
 
 # --- 사이드바 설정 (옵션 조절) ---
 st.sidebar.header("Poster Settings")
