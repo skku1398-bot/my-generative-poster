@@ -1,71 +1,76 @@
-# Week 5 - Interactive Generative Poster (Streamlit version)
-# Concepts: from Colab notebook to web app
-# Change from Colab: ipywidgets `interact` -> Streamlit sidebar widgets
-
-import random, math
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.colors import hsv_to_rgb
+from scipy.spatial import Delaunay
 import streamlit as st
 
+# --- Streamlit 페이지 설정 ---
+st.set_page_config(page_title="Crystal Shard Poster", page_icon="💎", layout="centered")
 
-# Blob shape
-def blob(center=(0.5, 0.5), r=0.3, points=200, wobble=0.15):
-    angles = np.linspace(0, 2 * math.pi, points, endpoint=False)
-    radii = r * (1 + wobble * (np.random.rand(points) - 0.5))
-    x = center[0] + radii * np.cos(angles)
-    y = center[1] + radii * np.sin(angles)
-    return x, y
+st.title("💎 Crystal Shard Poster Generator")
+st.write("델로네 삼각분할을 활용한 사이버펑크 크리스탈 포스터 생성기입니다.")
 
+# --- 사이드바 설정 (옵션 조절) ---
+st.sidebar.header("Poster Settings")
+n_points = st.sidebar.slider("Shard Density (Points):", min_value=30, max_value=150, value=90, step=10)
+seed_input = st.sidebar.number_input("Seed (0 for random):", min_value=0, max_value=9999, value=42)
 
-# Simple palette generator (HSV pastel/vivid/mono)
-def make_palette(k=6, mode="pastel", base_h=0.60):
-    cols = []
-    for _ in range(k):
-        if mode == "pastel":
-            h = random.random(); s = random.uniform(0.15, 0.35); v = random.uniform(0.9, 1.0)
-        elif mode == "vivid":
-            h = random.random(); s = random.uniform(0.8, 1.0); v = random.uniform(0.8, 1.0)
-        elif mode == "mono":
-            h = base_h; s = random.uniform(0.2, 0.6); v = random.uniform(0.5, 1.0)
-        else:  # random
-            h = random.random(); s = random.uniform(0.3, 1.0); v = random.uniform(0.5, 1.0)
-        cols.append(tuple(hsv_to_rgb([h, s, v])))
-    return cols
+# 시드값 처리
+seed = None if seed_input == 0 else int(seed_input)
 
+# --- 포스터 생성 함수 ---
+def generate_crystal_shard_poster(n_points=90, seed=None):
+    if seed is not None:
+        np.random.seed(seed)
 
-# Main drawing function: returns a figure instead of calling plt.show()
-def draw_poster(n_layers=8, wobble=0.15, palette_mode="pastel", seed=0):
-    random.seed(seed)
-    np.random.seed(seed)
-    fig, ax = plt.subplots(figsize=(6, 8))
-    ax.axis("off")
-    ax.set_facecolor((0.97, 0.97, 0.97))
+    fig, ax = plt.subplots(figsize=(8, 11))
+    bg_color = "#0B0B10"
+    fig.patch.set_facecolor(bg_color)
+    ax.set_facecolor(bg_color)
 
-    palette = make_palette(6, mode=palette_mode)
-    for _ in range(n_layers):
-        cx, cy = random.random(), random.random()
-        rr = random.uniform(0.15, 0.45)
-        x, y = blob((cx, cy), r=rr, wobble=wobble)
-        color = random.choice(palette)
-        alpha = random.uniform(0.3, 0.6)
-        ax.fill(x, y, color=color, alpha=alpha, edgecolor=(0, 0, 0, 0))
+    # 무작위 포인트 생성
+    x = np.random.uniform(-1.5, 1.5, n_points)
+    y = np.random.uniform(-2.2, 2.2, n_points)
 
-    ax.text(0.05, 0.95, f"Interactive Poster • {palette_mode}",
-            transform=ax.transAxes, fontsize=12, weight="bold")
+    # 캔버스 모서리 외곽 포인트 추가
+    borders = np.array([
+        [-1.5, -2.2], [1.5, -2.2], [-1.5, 2.2], [1.5, 2.2],
+        [0, -2.2], [0, 2.2], [-1.5, 0], [1.5, 0],
+        [-1.5, -1.1], [1.5, -1.1], [-1.5, 1.1], [1.5, 1.1]
+    ])
+    points = np.vstack([np.column_stack([x, y]), borders])
+
+    # 델로네 삼각분할 적용
+    tri = Delaunay(points)
+
+    def get_shard_color(cx, cy):
+        dist = np.sqrt(cx**2 + cy**2)
+        if dist < 0.7:
+            colors = ["#FF007F", "#7928ca", "#00f0ff"] # 중심부 네온 핫스팟
+        elif dist < 1.4:
+            colors = ["#3867D6", "#00FFCC", "#8A2BE2"] # 중간부 일렉트릭 블루/민트
+        else:
+            colors = ["#FF4500", "#FFD700", "#1E1E24"] # 외곽부 앰버/딥 다크
+        return np.random.choice(colors)
+
+    for tri_indices in tri.simplices:
+        pts = points[tri_indices]
+        cx = np.mean(pts[:, 0])
+        cy = np.mean(pts[:, 1])
+
+        color = get_shard_color(cx, cy)
+        alpha = np.random.uniform(0.35, 0.8)
+
+        ax.fill(pts[:, 0], pts[:, 1], color=color, alpha=alpha, edgecolor='#12121A', linewidth=0.9)
+
+    ax.set_xlim(-1.5, 1.5)
+    ax.set_ylim(-2.2, 2.2)
+    ax.axis('off')
+
+    plt.tight_layout()
+    plt.close(fig) # 중복 출력 방지
     return fig
 
-
-# ---------- Streamlit UI ----------
-st.set_page_config(page_title="Interactive Generative Poster", layout="centered")
-st.title("Interactive Generative Poster")
-st.caption("Arts and Advanced Big Data | From Colab to the Web")
-
-st.sidebar.header("Controls")
-n_layers = st.sidebar.slider("Layers", min_value=3, max_value=20, value=8, step=1)
-wobble = st.sidebar.slider("Wobble", min_value=0.01, max_value=0.30, value=0.15, step=0.01)
-palette_mode = st.sidebar.selectbox("Palette mode", ["pastel", "vivid", "mono", "random"])
-seed = st.sidebar.slider("Seed", min_value=0, max_value=9999, value=0, step=1)
-
-fig = draw_poster(n_layers, wobble, palette_mode, seed)
-st.pyplot(fig)
+# --- 포스터 생성 및 화면 출력 ---
+with st.spinner("크리스탈 조각을 생성하는 중입니다..."):
+    poster_fig = generate_crystal_shard_poster(n_points=n_points, seed=seed)
+    st.pyplot(poster_fig)
