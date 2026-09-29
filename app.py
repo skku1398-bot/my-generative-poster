@@ -4,7 +4,7 @@ from scipy.spatial import Delaunay
 import streamlit as st
 
 # --- Streamlit 페이지 설정 ---
-st.set_page_config(page_title="Crystal Shard Poster", page_icon="💎", layout="centered")
+st.set_page_config(page_title="Crystal Shard Poster", page_icon=".", layout="centered")
 
 st.title("Crystal Shard Poster Generator")
 
